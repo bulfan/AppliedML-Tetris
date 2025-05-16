@@ -32,7 +32,7 @@ TO DO:
 Proposed final structure?
 tetris_rl/
 ├── env/  
-│   └── tetris_env.py       # wraps Gym or your own logic  
+│   └── game_data.py
 ├── agents/  
 │   ├── model.py            # neural network  
 │   ├── replay_buffer.py    # experience replay  
@@ -41,7 +41,7 @@ tetris_rl/
 │   ├── train.py  
 │   └── evaluate.py  
 ├── ui/  
-│   └── game_ui.py  
+│   └── game_UI.py  
 ├── utils/  
 │   └── preprocessing.py    # feature scaling, PCA  
 ├── README.md  
