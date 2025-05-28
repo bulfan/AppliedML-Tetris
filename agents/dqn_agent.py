@@ -8,7 +8,7 @@ import torch.nn.functional as F
 class DQNAgent:
     def __init__(self, env, buffer_size=10000, batch_size=32,
                  gamma=0.99, lr=1e-5, target_update=1000,
-                 epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0000):
+                 epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=100000):
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.n_actions = env.action_space

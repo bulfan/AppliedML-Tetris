@@ -67,7 +67,7 @@ class TetrisEnv:
             done = True
             reward -= 10
 
-        # 1) high reward for line clears
+        # reward for line clears
         if lines > 0:
             reward += 100 * lines
             print(f"Cleared {lines} lines, total reward: {reward}")
