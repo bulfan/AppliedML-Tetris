@@ -1,2 +1,13 @@
 PyQt5
 NumPy
+torch
+torchvision
+scikit-learn
+matplotlib
+tensorboard
+gym
+fastapi
+uvicorn[standard]
+pydantic
+requests
+scipy

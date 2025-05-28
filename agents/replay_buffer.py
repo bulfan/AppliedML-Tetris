@@ -8,6 +8,10 @@ class ReplayBuffer:
 
     def push(self, state, action, reward, next_state, done):
         self.buffer.append((state, action, reward, next_state, done))
+    
+    def add(self, state, action, reward, next_state, done):
+        """Alias for push method to match DQN agent interface"""
+        self.push(state, action, reward, next_state, done)
 
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)

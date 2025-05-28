@@ -1,16 +1,17 @@
 import numpy as np
-from game_data import BOARD_DATA, Shape
+from env.game_data import BOARD_DATA, Shape
 import random
 
 class TetrisEnv:
     """
     A simple Gym-like wrapper around game_data.BoardData.
-    Actions: 0=noop(soft-drop), 1=left, 2=right, 3=rotate, 4=drop
+    Actions: 0=left, 1=right, 2=rotate, 3=drop
     """
     def __init__(self):
-        self.action_space = 5
+        self.action_space = 4  # Updated to match our 4 actions
         self.width = BOARD_DATA.width
         self.height = BOARD_DATA.height
+        self.game_over = False
         self.reset()
 
     def reset(self):
@@ -19,6 +20,7 @@ class TetrisEnv:
         BOARD_DATA.nextShape = Shape(np.random.randint(1, 8))
         # spawn first piece
         BOARD_DATA.createNewPiece()
+        self.game_over = False
         return self._get_obs()
     
     def seed(self, seed: int):
@@ -40,39 +42,58 @@ class TetrisEnv:
     def step(self, action):
         """
         Perform the action, return obs, reward, done.
-        reward = #lines cleared, -10 on game over.
+        Actions: 0=left, 1=right, 2=rotate, 3=drop
         """
         done = False
         reward = 0
+        lines = 0
 
-        if action == 0:
-            lines = BOARD_DATA.moveDown()
-        elif action == 1:
+        # Execute action
+        if action == 0:  # Move left
             BOARD_DATA.moveLeft()
-            lines = BOARD_DATA.moveDown()
-        elif action == 2:
+        elif action == 1:  # Move right
             BOARD_DATA.moveRight()
-            lines = BOARD_DATA.moveDown()
-        elif action == 3:
+        elif action == 2:  # Rotate
             BOARD_DATA.rotateRight()
-            lines = BOARD_DATA.moveDown()
-        elif action == 4:
+        elif action == 3:  # Drop
             lines = BOARD_DATA.dropDown()
+        
+        # Always move down after action (except for drop)
+        if action != 3:
+            lines = BOARD_DATA.moveDown()
 
-        reward += lines
-        # if after the move the current piece is “none”, we hit game over
-        if BOARD_DATA.currentShape.shape == Shape.shapeNone:
+        # Check for game over
+        if BOARD_DATA.gameOver():
             done = True
+            self.game_over = True
             reward -= 10
 
-        # reward for line clears
+        # Reward for line clears
         if lines > 0:
-            reward += 1 * lines
-            print(f"Cleared {lines} lines, total reward: {reward}")
+            reward += lines * 10
+            print(f"Cleared {lines} lines, reward: {lines * 10}")
         
-        # minimize the number of holes
-        holes = 0
+        # Small reward for staying alive
+        if not done:
+            reward += 0.1
+
+        # Calculate additional rewards based on board state
         board = self._get_obs()
+        
+        # Penalty for holes
+        holes = self._count_holes(board)
+        if holes > 0:
+            reward -= holes * 0.5
+        
+        # Penalty for height
+        max_height = self._get_max_height(board)
+        reward -= max_height * 0.1
+
+        return self._get_obs(), reward, done, {'lines_cleared': lines}
+    
+    def _count_holes(self, board):
+        """Count holes in the board"""
+        holes = 0
         for x in range(self.width):
             found_filled = False
             for y in range(self.height):
@@ -80,20 +101,14 @@ class TetrisEnv:
                     found_filled = True
                 elif found_filled and board[y, x] == 0:
                     holes += 1
-                    found_filled = False
-        if holes > 0:
-            reward -= 0.001 * holes
-        
-        # reward for height of the highest block
-        highest_block = 0
+        return holes
+    
+    def _get_max_height(self, board):
+        """Get the maximum height of pieces on the board"""
+        max_height = 0
         for x in range(self.width):
             for y in range(self.height):
                 if board[y, x] > 0:
-                    highest_block = max(highest_block, self.height - y)
+                    max_height = max(max_height, self.height - y)
                     break
-        reward -= 0.005 * highest_block
-
-        if not done:
-            reward += 0.0001
-
-        return self._get_obs(), reward, done, {}
+        return max_height
