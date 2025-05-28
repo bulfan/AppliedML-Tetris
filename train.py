@@ -9,8 +9,8 @@ summary_writer = SummaryWriter("runs/tetris_dqn")
 def train(num_episodes=1000, max_steps=10000):
     env = TetrisEnv()
     agent = DQNAgent(env)
-    num_episodes  = 1000
-    eval_interval = 50
+    num_episodes  = 10000
+    eval_interval = 100
     eval_seeds    = [42 + i for i in range(20)]
 
     for ep in range(1, num_episodes+1):

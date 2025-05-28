@@ -58,8 +58,6 @@ class TetrisEnv:
             lines = BOARD_DATA.moveDown()
         elif action == 4:
             lines = BOARD_DATA.dropDown()
-        else:
-            lines = 0
 
         reward += lines
         # if after the move the current piece is “none”, we hit game over
@@ -69,7 +67,33 @@ class TetrisEnv:
 
         # reward for line clears
         if lines > 0:
-            reward += 100 * lines
+            reward += 1 * lines
             print(f"Cleared {lines} lines, total reward: {reward}")
+        
+        # minimize the number of holes
+        holes = 0
+        board = self._get_obs()
+        for x in range(self.width):
+            found_filled = False
+            for y in range(self.height):
+                if board[y, x] > 0:
+                    found_filled = True
+                elif found_filled and board[y, x] == 0:
+                    holes += 1
+                    found_filled = False
+        if holes > 0:
+            reward -= 0.001 * holes
+        
+        # reward for height of the highest block
+        highest_block = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                if board[y, x] > 0:
+                    highest_block = max(highest_block, self.height - y)
+                    break
+        reward -= 0.005 * highest_block
+
+        if not done:
+            reward += 0.0001
 
         return self._get_obs(), reward, done, {}
