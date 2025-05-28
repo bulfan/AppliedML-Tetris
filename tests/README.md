@@ -75,7 +75,7 @@ Running tests from module: test_config
 ----------------------------------------------------------------------
 Ran 16 tests in 0.012s
 
-✅ All tests passed!
+All tests passed!
 ```
 
 ### Using pytest (if installed)
