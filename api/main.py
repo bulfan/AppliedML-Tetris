@@ -156,6 +156,8 @@ class BoardAnalysis(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Response model for move prediction."""
+    model_config = {"protected_namespaces": ()}
+    
     success: bool = Field(..., description="Whether the prediction was successful")
     recommended_action: ActionPrediction = Field(..., description="The recommended action to take")
     all_actions: List[ActionPrediction] = Field(..., description="Q-values for all possible actions")
@@ -165,6 +167,8 @@ class PredictionResponse(BaseModel):
 
 class ModelInfo(BaseModel):
     """Information about the loaded model."""
+    model_config = {"protected_namespaces": ()}
+    
     model_loaded: bool = Field(..., description="Whether a model is currently loaded")
     model_path: Optional[str] = Field(None, description="Path to the loaded model file")
     model_architecture: Dict[str, Any] = Field(..., description="Model architecture details")
@@ -191,45 +195,53 @@ def load_model(model_file_path: str = None):
     global model_agent, preprocessor, model_loaded, model_path
     
     try:
-        # Initialize preprocessor
+        logger.info("Initializing preprocessor...")
         preprocessor = TetrisPreprocessor()
         
-        # Initialize agent
-        state_size = preprocessor.get_feature_size()
-        action_size = 4
-        model_agent = DQNAgent(state_size, action_size)
-        
-        # Load model if path provided
-        if model_file_path and os.path.exists(model_file_path):
-            model_agent.load(model_file_path)
-            model_path = model_file_path
-            logger.info(f"Model loaded from {model_file_path}")
-        else:
-            # Try to load the default final model
-            default_path = os.path.join(config.MODEL_SAVE_PATH, "tetris_dqn_final.pth")
-            if os.path.exists(default_path):
-                model_agent.load(default_path)
-                model_path = default_path
-                logger.info(f"Default model loaded from {default_path}")
-            else:
-                logger.warning("No trained model found. Using untrained model.")
-                model_path = None
-        
-        # Set to evaluation mode
-        model_agent.epsilon = 0.0
-        model_loaded = True
-        
-        # Fit preprocessor with dummy data
+        # Initialize with dummy data to fit the preprocessor
         dummy_board = np.zeros((config.BOARD_HEIGHT, config.BOARD_WIDTH))
         dummy_features = [preprocessor.extract_features(dummy_board) for _ in range(10)]
         preprocessor.fit_transform(dummy_features)
         
+        # Initialize agent
+        state_size = preprocessor.get_feature_size()
+        action_size = 4
+        logger.info(f"Initializing DQN agent with state_size={state_size}, action_size={action_size}")
+        model_agent = DQNAgent(state_size, action_size)
+        
+        # Try to load a trained model if available
+        if model_file_path and os.path.exists(model_file_path):
+            logger.info(f"Loading model from {model_file_path}")
+            model_agent.load(model_file_path)
+            model_path = model_file_path
+            logger.info(f"Model loaded successfully from {model_file_path}")
+        else:
+            # Look for any available trained models
+            model_dir = config.MODEL_SAVE_PATH
+            if os.path.exists(model_dir):
+                model_files = [f for f in os.listdir(model_dir) if f.endswith('.pth')]
+                if model_files:
+                    # Load the first available model
+                    model_file = os.path.join(model_dir, model_files[0])
+                    logger.info(f"Loading available model: {model_file}")
+                    model_agent.load(model_file)
+                    model_path = model_file
+                    logger.info(f"Model loaded from {model_file}")
+                else:
+                    logger.warning("No trained model found. Using untrained model.")
+                    model_path = None
+            else:
+                logger.warning("No models directory found. Using untrained model.")
+                model_path = None
+        
+        model_loaded = True
         logger.info("Model and preprocessor initialized successfully")
         
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
         model_loaded = False
-        raise
+        # Don't raise the exception - let the API start with an untrained model
+        logger.warning("API will start with untrained model")
 
 @app.on_event("startup")
 async def startup_event():

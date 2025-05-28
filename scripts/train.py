@@ -71,9 +71,15 @@ class TetrisTrainer:
             self.training_lines.append(episode_lines)
             self.training_steps.append(episode_steps)
             
-            # Print progress
-            if episode % 50 == 0:
+            # Print progress more frequently for immediate feedback
+            if episode % 10 == 0:  # Changed from 50 to 10
                 self._print_progress(episode, start_time)
+            
+            # Print individual episode results for first 20 episodes
+            if episode <= 20:
+                agent_info = AI_MANAGER.get_agent_info()
+                epsilon = agent_info.get('epsilon', 0.0)
+                print(f"Episode {episode:3d}: Reward={episode_reward:6.1f}, Lines={episode_lines:2d}, Steps={episode_steps:3d}, Epsilon={epsilon:.3f}")
             
             # Evaluate agent
             if episode % self.eval_frequency == 0:
@@ -113,6 +119,9 @@ class TetrisTrainer:
     
     def _run_episode(self, episode):
         """Run a single training episode"""
+        if episode <= 5:  # Debug output for first few episodes
+            print(f"🎮 Starting episode {episode}...")
+        
         state = self.env.reset()
         total_reward = 0
         total_lines = 0
@@ -136,6 +145,9 @@ class TetrisTrainer:
             
             if done:
                 break
+        
+        if episode <= 5:  # Debug output for first few episodes
+            print(f"✅ Episode {episode} completed: {steps} steps, reward: {total_reward:.1f}")
         
         return total_reward, total_lines, steps
     

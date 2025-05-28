@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
-Startup script for the Tetris RL API
-
-This script starts the FastAPI server with proper configuration.
+Tetris RL API Server Startup Script
 """
 
 import uvicorn
@@ -14,24 +12,19 @@ def main():
     print("🚀 Starting Tetris RL API Server")
     print("=" * 50)
     
-    # Configuration
-    host = "0.0.0.0"
-    port = 8000
-    
-    print(f"🌐 Server will be available at:")
-    print(f"   - Local: http://localhost:{port}")
-    print(f"   - Network: http://{host}:{port}")
-    print(f"   - API Documentation: http://localhost:{port}/docs")
-    print(f"   - Alternative Docs: http://localhost:{port}/redoc")
+    print("🌐 Server will be available at:")
+    print("   - Local: http://localhost:8000")
+    print("   - Network: http://0.0.0.0:8000")
+    print("   - API Documentation: http://localhost:8000/docs")
+    print("   - Alternative Docs: http://localhost:8000/redoc")
     print("=" * 50)
     
     try:
-        # Start the server
         uvicorn.run(
             "api.main:app",
-            host=host,
-            port=port,
-            reload=True,  # Auto-reload on code changes
+            host="0.0.0.0",
+            port=8000,
+            reload=True,
             log_level="info"
         )
     except KeyboardInterrupt:

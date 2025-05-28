@@ -11,7 +11,6 @@ import time
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
 
-# Add project root to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from ui.game_UI import Tetris
@@ -28,11 +27,9 @@ class AIDemo:
         self.games_per_agent = 3  # Number of games each agent plays
         self.current_game = 0
         
-        # Timer for switching agents
         self.switch_timer = QTimer()
         self.switch_timer.timeout.connect(self.switch_to_next_agent)
         
-        # Performance tracking
         self.performance_stats = {}
         for agent in self.agents:
             self.performance_stats[agent] = {
@@ -51,12 +48,10 @@ class AIDemo:
         print(f"Each agent will play {self.games_per_agent} games")
         print("=" * 50)
         
-        # Enable AI mode and start with first agent
         self.game.ai_mode = True
         self.game.ai_speed = 200  # Faster for demo
         self.switch_to_agent(0)
         
-        # Start the demo
         self.game.show()
         return self.app.exec_()
     
@@ -70,21 +65,16 @@ class AIDemo:
             print(f"\n🤖 Switching to agent: {agent_name}")
             AI_MANAGER.set_agent(agent_name)
             
-            # Update game UI
             self.game.switchAgent(agent_name)
             self.game.updateStatusBar()
             
-            # Restart the game
             self.game.restartGame()
-            
-            # Set timer for next switch (after games_per_agent games)
-            # We'll check game over state instead of using timer
+
     
     def switch_to_next_agent(self):
         """Switch to the next agent in the list"""
         next_index = (self.current_agent_index + 1) % len(self.agents)
         if next_index == 0:
-            # Completed full cycle, show results
             self.show_final_results()
         else:
             self.switch_to_agent(next_index)
@@ -95,7 +85,6 @@ class AIDemo:
         score = self.game.tboard.score
         lines = self.game.tboard.lines_cleared
         
-        # Update statistics
         stats = self.performance_stats[current_agent]
         stats['games'] += 1
         stats['total_score'] += score
@@ -107,16 +96,13 @@ class AIDemo:
         
         self.current_game += 1
         
-        # Check if this agent has played enough games
         if self.current_game >= self.games_per_agent:
             print(f"✅ {current_agent} completed {self.games_per_agent} games")
             print(f"   Average Score: {stats['avg_score']:.1f}")
             print(f"   Average Lines: {stats['avg_lines']:.1f}")
             
-            # Switch to next agent after a short delay
             QTimer.singleShot(2000, self.switch_to_next_agent)
         else:
-            # Restart game with same agent after a short delay
             QTimer.singleShot(1000, self.game.restartGame)
     
     def show_final_results(self):
