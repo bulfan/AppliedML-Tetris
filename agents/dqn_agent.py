@@ -97,5 +97,5 @@ class HeuristicAgent:
     def __init__(self, action_size):
         self.action_size = action_size
         self.action_weights = [0.2, 0.2, 0.1, 0.5]    
-        def act(self, state, training=True):
-            return np.random.choice(self.action_size, p=self.action_weights)
+    def act(self, state, training=True):
+        return np.random.choice(self.action_size, p=self.action_weights)

@@ -18,7 +18,8 @@ class AIDemo:
         self.game = Tetris()
         self.current_agent_index = 0
         self.agents = AI_MANAGER.get_available_agents()
-        self.games_per_agent = 3        self.current_game = 0
+        self.games_per_agent = 3        
+        self.current_game = 0
         self.switch_timer = QTimer()
         self.switch_timer.timeout.connect(self.switch_to_next_agent)
         self.performance_stats = {}
@@ -38,7 +39,8 @@ class AIDemo:
         print(f"Each agent will play {self.games_per_agent} games")
         print("=" * 50)
         self.game.ai_mode = True
-        self.game.ai_speed = 200        self.switch_to_agent(0)
+        self.game.ai_speed = 200        
+        self.switch_to_agent(0)
         self.game.show()
         return self.app.exec_()
     def switch_to_agent(self, agent_index):

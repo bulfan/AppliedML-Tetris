@@ -63,7 +63,8 @@ class TestBoardData(unittest.TestCase):
         """Test board initialization"""
         self.assertEqual(self.board.width, 10)
         self.assertEqual(self.board.height, 22)
-        self.assertEqual(len(self.board.backBoard), 220)        self.assertEqual(self.board.currentX, -1)
+        self.assertEqual(len(self.board.backBoard), 220)        
+        self.assertEqual(self.board.currentX, -1)
         self.assertEqual(self.board.currentY, -1)
         self.assertEqual(self.board.currentDirection, 0)
         self.assertEqual(self.board.currentShape.shape, Shape.shapeNone)
@@ -98,7 +99,8 @@ class TestBoardData(unittest.TestCase):
     def test_create_new_piece(self):
         """Test piece creation"""
         result = self.board.createNewPiece()
-        if result:            self.assertNotEqual(self.board.currentX, -1)
+        if result:            
+            self.assertNotEqual(self.board.currentX, -1)
             self.assertNotEqual(self.board.currentY, -1)
             self.assertNotEqual(self.board.currentShape.shape, Shape.shapeNone)
             self.assertIn(self.board.nextShape.shape, range(1, 8))

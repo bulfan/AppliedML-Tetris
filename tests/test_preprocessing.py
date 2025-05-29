@@ -76,23 +76,29 @@ class TestTetrisPreprocessor(unittest.TestCase):
         complete_empty = self.preprocessor._count_complete_lines(self.empty_board)
         self.assertEqual(complete_empty, 0)
         complete_line_board = np.zeros((config.BOARD_HEIGHT, config.BOARD_WIDTH))
-        complete_line_board[21, :] = 1        complete_lines = self.preprocessor._count_complete_lines(complete_line_board)
+        complete_line_board[21, :] = 1        
+        complete_lines = self.preprocessor._count_complete_lines(complete_line_board)
         self.assertEqual(complete_lines, 1)
-        complete_line_board[20, :] = 1        complete_lines_multi = self.preprocessor._count_complete_lines(complete_line_board)
+        complete_line_board[20, :] = 1        
+        complete_lines_multi = self.preprocessor._count_complete_lines(complete_line_board)
         self.assertEqual(complete_lines_multi, 2)
     def test_count_wells(self):
         """Test well counting"""
         wells_empty = self.preprocessor._count_wells(self.empty_board)
         self.assertEqual(wells_empty, 0)
         well_board = np.zeros((config.BOARD_HEIGHT, config.BOARD_WIDTH))
-        well_board[20:22, 0] = 1        well_board[20:22, 2] = 1        wells = self.preprocessor._count_wells(well_board)
+        well_board[20:22, 0] = 1        
+        well_board[20:22, 2] = 1        
+        wells = self.preprocessor._count_wells(well_board)
         self.assertGreater(wells, 0)
     def test_count_blocked_cells(self):
         """Test blocked cell counting"""
         blocked_empty = self.preprocessor._count_blocked_cells(self.empty_board)
         self.assertEqual(blocked_empty, 0)
         blocked_board = np.zeros((config.BOARD_HEIGHT, config.BOARD_WIDTH))
-        blocked_board[21, 0] = 1        blocked_board[19, 0] = 1        blocked = self.preprocessor._count_blocked_cells(blocked_board)
+        blocked_board[21, 0] = 1        
+        blocked_board[19, 0] = 1        
+        blocked = self.preprocessor._count_blocked_cells(blocked_board)
         self.assertGreater(blocked, 0)
     def test_get_feature_size(self):
         """Test feature size calculation"""
@@ -151,8 +157,10 @@ class TestTetrisPreprocessor(unittest.TestCase):
         if preprocessor_norm.scaler is None:
             self.skipTest("Normalization is disabled in config")
         features_list = []
-        for i in range(20):            board = np.random.randint(0, 2, size=(config.BOARD_HEIGHT, config.BOARD_WIDTH))
-            if i < 15:                board[20:22, :min(i+1, config.BOARD_WIDTH)] = 1
+        for i in range(20):            
+            board = np.random.randint(0, 2, size=(config.BOARD_HEIGHT, config.BOARD_WIDTH))
+            if i < 15:                
+                board[20:22, :min(i+1, config.BOARD_WIDTH)] = 1
             features = preprocessor_norm.extract_features(board)
             features_list.append(features)
         original_features = np.array(features_list)
@@ -195,7 +203,8 @@ class TestTetrisPreprocessorEdgeCases(unittest.TestCase):
     def test_single_column_filled(self):
         """Test with only one column filled"""
         single_col_board = np.zeros((config.BOARD_HEIGHT, config.BOARD_WIDTH))
-        single_col_board[:, 0] = 1        features = self.preprocessor.extract_features(single_col_board)
+        single_col_board[:, 0] = 1        
+        features = self.preprocessor.extract_features(single_col_board)
         self.assertEqual(features[0], config.BOARD_HEIGHT)
         heights = features[:config.BOARD_WIDTH]
         self.assertTrue(np.all(heights[1:] == 0))

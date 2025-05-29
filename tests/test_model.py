@@ -10,7 +10,8 @@ class TestQNetwork(unittest.TestCase):
     """Test cases for the QNetwork class"""
     def setUp(self):
         """Set up test fixtures"""
-        self.state_size = 220        self.action_size = 4
+        self.state_size = 220        
+        self.action_size = 4
         self.hidden_layers = [512, 256, 128]
         self.dropout_rate = 0.2
         self.network = QNetwork(
@@ -158,7 +159,9 @@ class TestQNetwork(unittest.TestCase):
     def test_parameter_count(self):
         """Test that parameter count is reasonable"""
         total_params = sum(p.numel() for p in self.network.parameters())
-        self.assertGreater(total_params, 1000)        self.assertLess(total_params, 10000000)        trainable_params = sum(p.numel() for p in self.network.parameters() if p.requires_grad)
+        self.assertGreater(total_params, 1000)        
+        self.assertLess(total_params, 10000000)        
+        trainable_params = sum(p.numel() for p in self.network.parameters() if p.requires_grad)
         self.assertEqual(total_params, trainable_params)
     def test_device_compatibility(self):
         """Test network works on different devices"""
