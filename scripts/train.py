@@ -5,15 +5,16 @@ epochs, learning schedules, and evaluation metrics.
 """
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
 from datetime import datetime
 import json
 from env.tetris_env import TetrisEnv
 from agents.ai_manager import AI_MANAGER
 import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 class TetrisTrainer:
     """Comprehensive trainer for Tetris AI agents"""
     def __init__(self, agent_name="dqn_advanced"):
@@ -33,6 +34,7 @@ class TetrisTrainer:
         print(f" Initializing Tetris Trainer for {agent_name}")
         print(f" Training Episodes: {self.total_episodes}")
         print(f" Max Steps per Episode: {self.max_steps_per_episode}")
+
     def train_agent(self):
         """Main training loop"""
         print(f"\n Starting training for {self.agent_name}")
@@ -80,6 +82,7 @@ class TetrisTrainer:
             'training_rewards': self.training_rewards,
             'eval_scores': self.eval_scores
         }
+
     def _run_episode(self, episode):
         """Run a single training episode"""
         if episode <= 5:            print(f" Starting episode {episode}...")
@@ -99,6 +102,7 @@ class TetrisTrainer:
                 break
         if episode <= 5:            print(f" Episode {episode} completed: {steps} steps, reward: {total_reward:.1f}")
         return total_reward, total_lines, steps
+
     def _evaluate_agent(self, episode, num_games=5):
         """Evaluate agent performance without training"""
         print(f"\n Evaluating agent at episode {episode}...")
@@ -125,6 +129,7 @@ class TetrisTrainer:
         print(f"   Avg Reward: {avg_reward:.1f} ± {np.std(eval_rewards):.1f}")
         print(f"   Avg Lines: {avg_lines:.1f} ± {np.std(eval_lines):.1f}")
         return avg_reward
+
     def _print_progress(self, episode, start_time):
         """Print training progress"""
         recent_rewards = self.training_rewards[-50:] if len(self.training_rewards) >= 50 else self.training_rewards
@@ -140,11 +145,13 @@ class TetrisTrainer:
               f"Avg Lines: {avg_lines:5.1f} | "
               f"Epsilon: {epsilon:.3f} | "
               f"Speed: {episodes_per_hour:.1f} ep/h")
+
     def _save_model(self, model_name):
         """Save the current model"""
         filepath = os.path.join(config.MODEL_SAVE_PATH, f"{model_name}.pth")
         AI_MANAGER.save_current_model(filepath)
         return filepath
+
     def _save_training_data(self):
         """Save training metrics to file"""
         data = {
@@ -163,13 +170,16 @@ class TetrisTrainer:
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=2)
         print(f" Training data saved to {filepath}")
+
     def _plot_training_progress(self):
         """Plot and save training progress"""
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+
         def smooth_curve(data, window=50):
             if len(data) < window:
                 return data
             return np.convolve(data, np.ones(window)/window, mode='valid')
+
         episodes = range(1, len(self.training_rewards) + 1)
         ax1.plot(episodes, self.training_rewards, alpha=0.3, color='blue', label='Raw')
         if len(self.training_rewards) > 50:
@@ -212,6 +222,8 @@ class TetrisTrainer:
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.close()
         print(f" Training plots saved to {plot_path}")
+
+
 def train_multiple_agents():
     """Train multiple agents with different configurations"""
     agents_to_train = [
@@ -236,6 +248,8 @@ def train_multiple_agents():
     for agent_name, result in results.items():
         print(f"{agent_name:<15} {result['final_score']:<12.1f} {result['best_score']:<12.1f}")
     return results
+
+
 def main():
     """Main training function"""
     print(" Tetris Deep Q-Network Training System")
@@ -250,5 +264,6 @@ def main():
     print("  - Use the API to test model performance")
     print("  - Run evaluation scripts to compare agents")
     print("  - View training plots in the logs directory")
+
 if __name__ == "__main__":
     main()

@@ -1,13 +1,14 @@
-import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 from env.tetris_env import TetrisEnv
 from agents.dqn_agent import DQNAgent
 from utils.preprocessing import TetrisPreprocessor
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 def evaluate_agent(model_path, num_episodes=100, render=False):
     """Evaluate a trained DQN agent"""
     env = TetrisEnv()
@@ -78,6 +79,8 @@ def evaluate_agent(model_path, num_episodes=100, render=False):
         'avg_score': avg_score,
         'avg_lines': avg_lines
     }
+
+
 def plot_evaluation_results(scores, lines_cleared, game_lengths):
     """Plot evaluation metrics"""
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
@@ -104,6 +107,8 @@ def plot_evaluation_results(scores, lines_cleared, game_lengths):
     plt.tight_layout()
     plt.savefig(os.path.join(config.LOG_PATH, 'evaluation_results.png'))
     plt.show()
+
+
 def compare_models(model_paths, num_episodes=50):
     """Compare multiple trained models"""
     results = {}
@@ -127,6 +132,8 @@ def compare_models(model_paths, num_episodes=50):
     plt.savefig(os.path.join(config.LOG_PATH, 'model_comparison.png'))
     plt.show()
     return results
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Evaluate Tetris DQN Agent')
