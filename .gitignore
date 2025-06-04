@@ -1,3 +1,6 @@
+# Virtual environment
+.venv/
+tetris_env/
 
 # Backup files
 *.backup

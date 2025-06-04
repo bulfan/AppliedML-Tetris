@@ -5,6 +5,8 @@ epochs, learning schedules, and evaluation metrics.
 """
 import sys
 import os
+import torch
+import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -18,12 +20,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 class TetrisTrainer:
     """Comprehensive trainer for Tetris AI agents"""
     def __init__(self, agent_name="dqn_advanced"):
+        # trying to improve training time by switching to GPU
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
+        # ^
         self.agent_name = agent_name
         self.env = TetrisEnv()
-        self.total_episodes = 2000        
+        self.total_episodes = config.MAX_EPISODES        
         self.eval_frequency = 100        
         self.save_frequency = 200        
-        self.max_steps_per_episode = 2000        
+        self.max_steps_per_episode = config.MAX_STEPS_PER_EPISODE       
+        self.current_episode = 0
         self.training_rewards = []
         self.training_lines = []
         self.training_steps = []
@@ -32,9 +39,10 @@ class TetrisTrainer:
         self.best_score = float('-inf')
         self.best_model_path = None
         print(f" Initializing Tetris Trainer for {agent_name}")
+        print(f"Device chosen: {self.device}")
         print(f" Training Episodes: {self.total_episodes}")
         print(f" Max Steps per Episode: {self.max_steps_per_episode}")
-
+    
     def train_agent(self):
         """Main training loop"""
         print(f"\n Starting training for {self.agent_name}")
@@ -42,20 +50,32 @@ class TetrisTrainer:
         if not AI_MANAGER.set_agent(self.agent_name):
             print(f" Failed to switch to agent {self.agent_name}")
             return
+        # GPU lines hereV
+        agent = AI_MANAGER.current_agent
+        agent.q_network = agent.q_network.to(self.device)
+        agent.target_network = agent.target_network.to(self.device)
+        agent.optimizer = optim.Adam(agent.q_network.parameters(), lr=agent.optimizer.defaults['lr'])
+        #^
         if not self.agent_name.startswith("dqn"):
             print(f"  {self.agent_name} is not a trainable agent")
             return
+        
         start_time = datetime.now()
         for episode in range(1, self.total_episodes + 1):
+            agent.start_episode()
             episode_reward, episode_lines, episode_steps = self._run_episode(episode)
             self.training_rewards.append(episode_reward)
             self.training_lines.append(episode_lines)
             self.training_steps.append(episode_steps)
-            if episode % 10 == 0:                self._print_progress(episode, start_time)
+
+            if episode % 10 == 0:                
+                self._print_progress(episode, start_time)
+            
             if episode <= 20:
                 agent_info = AI_MANAGER.get_agent_info()
                 epsilon = agent_info.get('epsilon', 0.0)
                 print(f"Episode {episode:3d}: Reward={episode_reward:6.1f}, Lines={episode_lines:2d}, Steps={episode_steps:3d}, Epsilon={epsilon:.3f}")
+            
             if episode % self.eval_frequency == 0:
                 eval_score = self._evaluate_agent(episode)
                 self.eval_scores.append(eval_score)
@@ -64,14 +84,19 @@ class TetrisTrainer:
                     self.best_score = eval_score
                     self.best_model_path = self._save_model(f"best_{self.agent_name}")
                     print(f" New best model! Score: {eval_score:.1f}")
+            
             if episode % self.save_frequency == 0:
                 self._save_model(f"{self.agent_name}_episode_{episode}")
                 self._save_training_data()
                 self._plot_training_progress()
+
+            self.current_episode = episode
+
         final_score = self._evaluate_agent(self.total_episodes, num_games=10)
         self._save_model(f"final_{self.agent_name}")
         self._save_training_data()
         self._plot_training_progress()
+
         print(f"\n Training completed!")
         print(f" Final evaluation score: {final_score:.1f}")
         print(f" Best score achieved: {self.best_score:.1f}")
@@ -85,7 +110,8 @@ class TetrisTrainer:
 
     def _run_episode(self, episode):
         """Run a single training episode"""
-        if episode <= 5:            print(f" Starting episode {episode}...")
+        if episode <= 5:
+            print(f" Starting episode {episode}...")
         state = self.env.reset()
         total_reward = 0
         total_lines = 0
@@ -132,8 +158,8 @@ class TetrisTrainer:
 
     def _print_progress(self, episode, start_time):
         """Print training progress"""
-        recent_rewards = self.training_rewards[-50:] if len(self.training_rewards) >= 50 else self.training_rewards
-        recent_lines = self.training_lines[-50:] if len(self.training_lines) >= 50 else self.training_lines
+        recent_rewards = self.training_rewards[-10:] if len(self.training_rewards) >= 10 else self.training_rewards
+        recent_lines = self.training_lines[-10:] if len(self.training_lines) >= 10 else self.training_lines
         avg_reward = np.mean(recent_rewards)
         avg_lines = np.mean(recent_lines)
         agent_info = AI_MANAGER.get_agent_info()
@@ -142,7 +168,7 @@ class TetrisTrainer:
         episodes_per_hour = episode / (elapsed.total_seconds() / 3600)
         print(f"Episode {episode:4d} | "
               f"Avg Reward: {avg_reward:7.1f} | "
-              f"Avg Lines: {avg_lines:5.1f} | "
+              f"Avg Lines: {avg_lines:5.2f} | "
               f"Epsilon: {epsilon:.3f} | "
               f"Speed: {episodes_per_hour:.1f} ep/h")
 

@@ -8,6 +8,8 @@ import os
 from agents.dqn_agent import DQNAgent, RandomAgent, HeuristicAgent
 from utils.preprocessing import TetrisPreprocessor
 import config
+
+
 class AIManager:
     """Manages multiple AI agents for Tetris gameplay"""
     def __init__(self):
@@ -17,11 +19,13 @@ class AIManager:
         self.current_agent_name = "random"
         self._init_preprocessor()
         self._init_agents()
+
     def _init_preprocessor(self):
         """Initialize preprocessor with dummy data"""
         dummy_board = np.zeros((config.BOARD_HEIGHT, config.BOARD_WIDTH))
         dummy_features = [self.preprocessor.extract_features(dummy_board) for _ in range(10)]
         self.preprocessor.fit_transform(dummy_features)
+
     def _init_agents(self):
         """Initialize all AI agents"""
         feature_size = self.preprocessor.get_feature_size()
@@ -31,18 +35,16 @@ class AIManager:
         self.agents["dqn_basic"] = DQNAgent(
             state_size=feature_size,
             action_size=action_size,
-            lr=1e-3,
-            epsilon_decay=50000
+            lr=1e-3
         )
         self.agents["dqn_advanced"] = DQNAgent(
             state_size=feature_size,
             action_size=action_size,
             lr=5e-4,
-            epsilon_decay=100000,
-            gamma=0.95
         )
         self._load_trained_models()
         self.current_agent = self.agents[self.current_agent_name]
+
     def _load_trained_models(self):
         """Load any available trained models"""
         model_dir = config.MODEL_SAVE_PATH
@@ -89,9 +91,11 @@ class AIManager:
             model_files = [f for f in os.listdir(model_dir) if f.endswith('.pth')]
         if not model_files:
             print(" No trained models found. Starting with untrained models.")
+
     def get_available_agents(self):
         """Get list of available agent names"""
         return list(self.agents.keys())
+
     def set_agent(self, agent_name):
         """Switch to a different agent"""
         if agent_name in self.agents:
@@ -102,9 +106,11 @@ class AIManager:
         else:
             print(f"Agent '{agent_name}' not found. Available agents: {self.get_available_agents()}")
             return False
+
     def get_current_agent_name(self):
         """Get the name of the current agent"""
         return self.current_agent_name
+
     def get_action(self, board_state, training=False):
         """Get action from current agent"""
         if self.current_agent is None:
@@ -115,6 +121,7 @@ class AIManager:
             return self.current_agent.act(state_features, training=training)
         else:
             return self.current_agent.act(board_state, training=training)
+
     def get_agent_info(self):
         """Get information about the current agent"""
         info = {
@@ -140,6 +147,7 @@ class AIManager:
                 "step_count": getattr(self.current_agent, 'step_count', 0)
             })
         return info
+
     def train_step(self, state, action, reward, next_state, done):
         """Training step for DQN agents"""
         if self.current_agent_name.startswith("dqn"):
@@ -150,6 +158,7 @@ class AIManager:
                 self.preprocessor.extract_features(next_state)
             )
             self.current_agent.step(state_features, action, reward, next_state_features, done)
+
     def save_current_model(self, filepath=None):
         """Save the current model if it's a DQN agent"""
         if self.current_agent_name.startswith("dqn"):
@@ -162,4 +171,6 @@ class AIManager:
         else:
             print(f"Cannot save {self.current_agent_name} agent (not a DQN agent)")
             return False
+            
+        
 AI_MANAGER = AIManager() 

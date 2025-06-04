@@ -5,10 +5,11 @@ from agents.model import QNetwork
 from agents.replay_buffer import ReplayBuffer
 import torch.nn.functional as F
 import os
+import config
+
+
 class DQNAgent:
-    def __init__(self, state_size, action_size, buffer_size=10000, batch_size=32,
-                 gamma=0.99, lr=1e-3, target_update=1000,
-                 epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=100000):
+    def __init__(self, state_size, action_size, buffer_size=10000, lr=1e-3, target_update=1000):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.state_size = state_size
         self.action_size = action_size
@@ -18,19 +19,38 @@ class DQNAgent:
         self.target_network.eval()
         self.memory = ReplayBuffer(buffer_size)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
-        self.gamma = gamma
-        self.batch_size = batch_size
+        self.gamma = config.GAMMA
+        self.batch_size = config.BATCH_SIZE
         self.target_update = target_update
-        self.epsilon_start = epsilon_start
-        self.epsilon_final = epsilon_final
-        self.epsilon_decay = epsilon_decay
-        self.epsilon = epsilon_start
+        self.epsilon_start = config.EPSILON_START
+        self.epsilon_final = config.EPSILON_END
+        self.epsilon_decay = config.EPSILON_DECAY
+        self.epsilon = config.EPSILON_START
         self.step_count = 0
+        self.episode_count = 0
+        self.actual_episode_count = 0
+
+    def start_episode(self):
+        """
+        Call this exactly ONCE at the very beginning of each new episode (episode n).
+        It computes self.epsilon = ε(n) based on the *current* episode_count,
+        then increments episode_count so that next time we move to ε(n+1).
+        """
+        if self.actual_episode_count == 0:
+            self.epsilon = 1
+        elif self.actual_episode_count >= 500:
+            self.epsilon = (
+                self.epsilon_final
+                + (self.epsilon_start - self.epsilon_final)
+                * np.exp(-self.episode_count / self.epsilon_decay)
+            )
+            self.episode_count += 1
+        self.actual_episode_count += 1
+        
+
     def act(self, state, training=True):
         """Choose action using epsilon-greedy policy"""
         if training:
-            self.epsilon = self.epsilon_final + (self.epsilon_start - self.epsilon_final) * \
-                          np.exp(-1. * self.step_count / self.epsilon_decay)
             self.step_count += 1
             if np.random.random() < self.epsilon:
                 return np.random.randint(self.action_size)
@@ -38,12 +58,14 @@ class DQNAgent:
         with torch.no_grad():
             q_values = self.q_network(state_tensor)
         return q_values.argmax().item()
+    
     def step(self, state, action, reward, next_state, done):
         """Save experience and learn if enough samples available"""
         self.memory.add(state, action, reward, next_state, done)
         if len(self.memory) > self.batch_size:
             experiences = self.memory.sample(self.batch_size)
             self.learn(experiences)
+
     def learn(self, experiences):
         """Update Q-network using batch of experiences"""
         states, actions, rewards, next_states, dones = experiences
@@ -62,6 +84,7 @@ class DQNAgent:
         self.optimizer.step()
         if self.step_count % self.target_update == 0:
             self.target_network.load_state_dict(self.q_network.state_dict())
+    
     def save(self, filepath):
         """Save model state"""
         torch.save({
@@ -71,6 +94,7 @@ class DQNAgent:
             'epsilon': self.epsilon,
             'step_count': self.step_count
         }, filepath)
+
     def load(self, filepath):
         """Load model state"""
         if os.path.exists(filepath):
@@ -86,16 +110,21 @@ class DQNAgent:
             print(f"Model loaded from {filepath}")
         else:
             print(f"No model found at {filepath}")
+
+
 class RandomAgent:
     """Random baseline agent for comparison"""
     def __init__(self, action_size):
         self.action_size = action_size
     def act(self, state, training=True):
         return np.random.randint(self.action_size)
+
+
 class HeuristicAgent:
     """Simple heuristic agent that prefers certain actions"""
     def __init__(self, action_size):
         self.action_size = action_size
         self.action_weights = [0.2, 0.2, 0.1, 0.5]    
+
     def act(self, state, training=True):
         return np.random.choice(self.action_size, p=self.action_weights)

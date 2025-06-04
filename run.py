@@ -4,6 +4,12 @@ from PyQt5.QtWidgets import QApplication
 from scripts.train import TetrisTrainer
 from scripts.evaluate import evaluate_agent
 from ui.game_UI import Tetris
+import torch
+
+print("CUDA available:", torch.cuda.is_available())
+print("GPU count:", torch.cuda.device_count())
+if torch.cuda.is_available():
+    print("Current device name:", torch.cuda.get_device_name(0))
 
 
 def main():
