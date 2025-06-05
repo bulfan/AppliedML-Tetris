@@ -7,6 +7,7 @@ import numpy as np
 import os
 from agents.dqn_agent import DQNAgent, RandomAgent, HeuristicAgent
 from utils.preprocessing import TetrisPreprocessor
+from agents.evaluation_agent import EvaluationAgent
 import config
 
 
@@ -17,6 +18,7 @@ class AIManager:
         self.agents = {}
         self.current_agent = None
         self.current_agent_name = "random"
+        self.evalMoves = []  # For evaluation agent moves
         self._init_preprocessor()
         self._init_agents()
 
@@ -42,6 +44,7 @@ class AIManager:
             action_size=action_size,
             lr=5e-4,
         )
+        self.agents["evaluation"] = EvaluationAgent()
         self._load_trained_models()
         self.current_agent = self.agents[self.current_agent_name]
 
@@ -118,9 +121,14 @@ class AIManager:
         if self.current_agent_name.startswith("dqn"):
             features = self.preprocessor.extract_features(board_state)
             state_features = self.preprocessor.transform(features)
+            print(self.current_agent.act(state_features, training=training))
             return self.current_agent.act(state_features, training=training)
-        else:
-            return self.current_agent.act(board_state, training=training)
+        if self.current_agent_name == "evaluation":
+            features = self.preprocessor.extract_features(board_state)
+            self.evalMoves.append(self.current_agent.act())
+            print(self.evalMoves)
+            self.current_agent.update(features, 0)
+            return self.evalMoves.pop(0) if self.evalMoves else None
 
     def get_agent_info(self):
         """Get information about the current agent"""
@@ -129,7 +137,12 @@ class AIManager:
             "type": "unknown",
             "description": "No description available"
         }
-        if self.current_agent_name == "random":
+        if self.current_agent == "evaluation":
+            info.update({
+                "type": "evaluation",
+                "description": "Evaluation agent that uses a heuristic approach"
+            })
+        elif self.current_agent_name == "random":
             info.update({
                 "type": "baseline",
                 "description": "Random action selection baseline"

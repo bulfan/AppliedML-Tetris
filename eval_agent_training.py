@@ -98,10 +98,21 @@ def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: floa
     # save the best agent from the final generation
     torch.save(population[0].state_dict(), model_out)
 
+def test_saved_model():
+    """Test the saved model to ensure it works correctly."""
+    agent = EvaluationAgent()
+    agent.load_state_dict(torch.load("models/ga_evaluation_agent.pth"))
+    agent.eval()
+    BOARD_DATA.clear()
+    BOARD_DATA.nextShape = Shape(random.randint(1, 7))
+    BOARD_DATA.createNewPiece()
+    total_reward = run_episode(agent, 500)
+    print(f"Total reward from saved model: {total_reward:.2f}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genetic training for EvaluationAgent")
-    parser.add_argument("--episodes", type=int, default=2)
+    parser.add_argument("--episodes", type=int, default=5)
     parser.add_argument("--steps", type=int, default=500)
     parser.add_argument("--pop-size", type=int, default=100)
     parser.add_argument("--elite-size", type=int, default=10)

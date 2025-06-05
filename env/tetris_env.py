@@ -15,6 +15,10 @@ class TetrisEnv:
         self.height = BOARD_DATA.height
         self.game_over = False
         self.reset()
+    
+    def currentDirection(self):
+        """Get the current direction of the piece."""
+        return BOARD_DATA.currentDirection
 
     def reset(self):
         BOARD_DATA.clear()

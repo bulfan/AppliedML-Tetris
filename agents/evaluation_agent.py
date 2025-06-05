@@ -1,8 +1,10 @@
+from typing import Mapping
 import torch
 import torch.nn as nn
 import copy
 from env.game_data import BOARD_DATA, BoardData
-
+import numpy as np
+from typing import Any
 
 class EvaluationAgent(nn.Module):
     """Simple evaluation agent using board heuristics.
@@ -25,6 +27,7 @@ class EvaluationAgent(nn.Module):
         )
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss()
+        self._plan: list[int] = []  # Stores the current plan of actions
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
@@ -121,6 +124,25 @@ class EvaluationAgent(nn.Module):
                     best_reward = reward
                     best = (r_used, x_used, feats)
         return best
+    
+    def act(self):
+        """Return the best move based on current board state."""
+        move = self.best_move()
+        if move is None:
+            return None
+        rot, x_target, features = move
+        k = 0
+        list_of_moves = []
+        while BOARD_DATA.currentDirection != rot and k < 4:
+            list_of_moves.append(2)
+            k += 1
+        while BOARD_DATA.currentX < x_target:
+            list_of_moves.append(1)
+        while BOARD_DATA.currentX > x_target:
+            list_of_moves.append(0)
+        list_of_moves.append(3)
+        self.update(features, 0)
+        return list_of_moves
 
     # ------------------------------------------------------------------
     # Learning
@@ -140,5 +162,10 @@ class EvaluationAgent(nn.Module):
     
     def load(self, filepath: str):
         """Load the model state from the specified file."""
+        print(f"Loading model from {filepath}")
         self.load_state_dict(torch.load(filepath, map_location=torch.device('cpu')))
-        self.eval()
+    
+    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True, assign: bool = False):
+        return super().load_state_dict(state_dict, strict, assign)
+
+    
