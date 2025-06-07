@@ -2,9 +2,14 @@ import argparse
 import random
 import numpy as np
 import torch
+from multiprocessing import Pool, cpu_count
 
 from env.game_data import BOARD_DATA, BoardData, Shape
 from agents.evaluation_agent import EvaluationAgent
+
+# Determine computing device
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Running on device: {DEVICE}")
 
 
 def compute_reward(lines: int, done: bool) -> float:
@@ -40,7 +45,10 @@ def compute_reward(lines: int, done: bool) -> float:
     return float(reward)
 
 
-def run_episode(agent: EvaluationAgent, max_steps: int) -> float:
+def run_episode(args) -> float:
+    agent, max_steps = args
+    agent.eval()  # should be in eval mode
+    agent.to(DEVICE)
     BOARD_DATA.clear()
     BOARD_DATA.nextShape = Shape(random.randint(1, 7))
     BOARD_DATA.createNewPiece()
@@ -61,6 +69,7 @@ def run_episode(agent: EvaluationAgent, max_steps: int) -> float:
         lines = BOARD_DATA.dropDown()
         done = BOARD_DATA.currentShape.shape == Shape.shapeNone
         reward = compute_reward(lines, done)
+        # features and reward on CPU suffice for scalar update
         agent.update(features, reward)
         total_reward += reward
         if done:
@@ -69,35 +78,57 @@ def run_episode(agent: EvaluationAgent, max_steps: int) -> float:
 
 
 def mutate_state(state_dict: dict[str, torch.Tensor], sigma: float) -> dict[str, torch.Tensor]:
-    """Return a mutated copy of ``state_dict``."""
+    """Return a mutated copy of ``state_dict`` on the same device."""
     new_state = {}
     for k, v in state_dict.items():
-        noise = torch.randn_like(v) * sigma
+        v = v.to(DEVICE)
+        noise = torch.randn_like(v, device=DEVICE) * sigma
         new_state[k] = v + noise
     return new_state
 
 
-def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: float, model_out: str):
-    population = [EvaluationAgent() for _ in range(pop_size)]
-    for ep in range(1, episodes + 1):
-        scores = []
-        for agent in population:
-            reward = run_episode(agent, steps)
-            scores.append((reward, agent))
-        scores.sort(key=lambda x: x[0], reverse=True)
-        best_reward = scores[0][0]
-        print(f"Generation {ep:3d} - best reward {best_reward:.2f}")
-        elites = [agent for _, agent in scores[:elite_size]]
-        new_population = elites.copy()
-        while len(new_population) < pop_size:
-            parent = random.choice(elites)
-            child = EvaluationAgent()
-            child.load_state_dict(mutate_state(parent.state_dict(), sigma))
-            new_population.append(child)
-        population = new_population
-    # save the best agent from the final generation
-    best_model = scores[0][1]
-    best_model.save(model_out)
+def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: float, model_out: str, num_workers: int = None):
+    # Initialize population on DEVICE
+    population = []
+    for _ in range(pop_size):
+        agent = EvaluationAgent().to(DEVICE)
+        population.append(agent)
+
+    # Report device and determine number of workers
+    print(f"Using {DEVICE} compute with {cpu_count()} CPU cores.")
+    workers = num_workers or min(cpu_count(), pop_size)
+    print(f"Using {workers} worker process{'es' if workers != 1 else ''} for parallel evaluation.")
+
+    with Pool(processes=workers) as pool:
+        for ep in range(1, episodes + 1):
+            args_list = [(agent, steps) for agent in population]
+            rewards = pool.map(run_episode, args_list)
+
+            # Pair rewards with agents and select elites
+            scores = list(zip(rewards, population))
+            scores.sort(key=lambda x: x[0], reverse=True)
+            best_reward = scores[0][0]
+            print(f"Generation {ep:3d} - best reward {best_reward:.2f}")
+
+            elites = [agent for _, agent in scores[:elite_size]]
+            new_population = []
+            # Move elites to DEVICE (already there)
+            for agent in elites:
+                new_population.append(agent)
+
+            # Generate mutated offspring
+            while len(new_population) < pop_size:
+                parent = random.choice(elites)
+                child = EvaluationAgent().to(DEVICE)
+                child.load_state_dict(mutate_state(parent.state_dict(), sigma))
+                new_population.append(child)
+
+            population = new_population
+
+    # Save best agent on CPU for portability
+    best_agent = scores[0][1].to('cpu')
+    torch.save(best_agent.state_dict(), model_out)
+    print(f"Saved best agent's state to {model_out}")
 
 
 if __name__ == "__main__":
@@ -108,5 +139,14 @@ if __name__ == "__main__":
     parser.add_argument("--elite-size", type=int, default=10)
     parser.add_argument("--sigma", type=float, default=0.02)
     parser.add_argument("--model-out", type=str, default="AppliedML-Tetris/models/evaluation_agent.pth")
+    parser.add_argument("--workers", type=int, default=None, help="Number of parallel workers (defaults to CPU count)")
     args = parser.parse_args()
-    train(args.pop_size, args.steps, args.episodes, args.elite_size, args.sigma, args.model_out)
+    train(
+        args.pop_size,
+        args.steps,
+        args.episodes,
+        args.elite_size,
+        args.sigma,
+        args.model_out,
+        args.workers
+    )
