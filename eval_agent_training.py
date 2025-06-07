@@ -46,7 +46,7 @@ def run_episode(agent: EvaluationAgent, max_steps: int) -> float:
     BOARD_DATA.createNewPiece()
     total_reward = 0.0
     for _ in range(max_steps):
-        move = agent.best_move()
+        move = agent.best_move(BOARD_DATA)
         if not move:
             break
         rot, x_target, features = move
@@ -96,27 +96,17 @@ def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: floa
             new_population.append(child)
         population = new_population
     # save the best agent from the final generation
-    torch.save(population[0].state_dict(), model_out)
-
-def test_saved_model():
-    """Test the saved model to ensure it works correctly."""
-    agent = EvaluationAgent()
-    agent.load_state_dict(torch.load("models/ga_evaluation_agent.pth"))
-    agent.eval()
-    BOARD_DATA.clear()
-    BOARD_DATA.nextShape = Shape(random.randint(1, 7))
-    BOARD_DATA.createNewPiece()
-    total_reward = run_episode(agent, 500)
-    print(f"Total reward from saved model: {total_reward:.2f}")
+    best_model = scores[0][1]
+    best_model.save(model_out)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genetic training for EvaluationAgent")
-    parser.add_argument("--episodes", type=int, default=5)
-    parser.add_argument("--steps", type=int, default=500)
-    parser.add_argument("--pop-size", type=int, default=100)
+    parser.add_argument("--episodes", type=int, default=20)
+    parser.add_argument("--steps", type=int, default=1000)
+    parser.add_argument("--pop-size", type=int, default=50)
     parser.add_argument("--elite-size", type=int, default=10)
     parser.add_argument("--sigma", type=float, default=0.02)
-    parser.add_argument("--model-out", type=str, default="ga_evaluation_agent.pth")
+    parser.add_argument("--model-out", type=str, default="AppliedML-Tetris/models/evaluation_agent.pth")
     args = parser.parse_args()
     train(args.pop_size, args.steps, args.episodes, args.elite_size, args.sigma, args.model_out)

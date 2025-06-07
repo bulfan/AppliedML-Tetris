@@ -135,7 +135,7 @@ class Tetris(QMainWindow):
         for x in range(BOARD_DATA.width):
             for y in range(BOARD_DATA.height):
                 board_state[y, x] = BOARD_DATA.getValue(x, y)
-        action = AI_MANAGER.get_action(board_state, training=False)
+        action = AI_MANAGER.get_action(BOARD_DATA, board_state, training=False)
         return action
     def timerEvent(self, event):
         if event.timerId() == self.timer.timerId():

@@ -89,6 +89,13 @@ class AIManager:
                 print(f" Loaded best advanced DQN model from {best_advanced_path}")
             except Exception as e:
                 print(f"  Failed to load best advanced DQN model: {e}")
+        evaluation_model_path = os.path.join(model_dir, "evaluation_agent.pth")
+        if os.path.exists(evaluation_model_path):
+            try:
+                self.agents["evaluation"].load(evaluation_model_path)
+                print(f" Loaded evaluation agent model from {evaluation_model_path}")
+            except Exception as e:
+                print(f"  Failed to load evaluation agent model: {e}")
         model_files = []
         if os.path.exists(model_dir):
             model_files = [f for f in os.listdir(model_dir) if f.endswith('.pth')]
@@ -114,7 +121,7 @@ class AIManager:
         """Get the name of the current agent"""
         return self.current_agent_name
 
-    def get_action(self, board_state, training=False):
+    def get_action(self, board, board_state, training=False):
         """Get action from current agent"""
         if self.current_agent is None:
             return np.random.randint(4)        
@@ -124,10 +131,10 @@ class AIManager:
             print(self.current_agent.act(state_features, training=training))
             return self.current_agent.act(state_features, training=training)
         if self.current_agent_name == "evaluation":
-            features = self.preprocessor.extract_features(board_state)
-            self.evalMoves.append(self.current_agent.act())
+            if len(self.evalMoves) == 0:
+                features = self.preprocessor.extract_features(board_state)
+                self.evalMoves.extend(self.current_agent.act(board))
             print(self.evalMoves)
-            self.current_agent.update(features, 0)
             return self.evalMoves.pop(0) if self.evalMoves else None
 
     def get_agent_info(self):

@@ -61,6 +61,16 @@ class EvaluationAgent(nn.Module):
         max_h = max(heights) if heights else 0
         min_h = min(heights) if heights else 0
 
+        #multiple lines cleared in one move gives extra reward
+        line_reward = [
+            0,  1,  3,  5, 10
+        ]
+        if lines_cleared < len(line_reward):
+            lines_cleared = line_reward[lines_cleared]
+        else:
+        # no different reward for more than 4 lines cleared
+            lines_cleared = 10
+
         feats = torch.tensor([
             float(diff_height),
             float(holes),
@@ -73,14 +83,13 @@ class EvaluationAgent(nn.Module):
     # ------------------------------------------------------------------
     # Move simulation
     # ------------------------------------------------------------------
-    def _simulate_move(self, rotation: int, target_x: int):
+    def _simulate_move(self, rotation: int, target_x: int, board: BoardData) -> tuple[float, torch.Tensor, int, int] | None:
         """Simulate dropping the current piece with ``rotation`` and ``target_x``.
 
         Returns ``(predicted_reward, features, rotation, target_x)`` or ``None``
         if the move is impossible.
         """
-        board = copy.deepcopy(BOARD_DATA)
-
+        board = copy.deepcopy(board)
         # rotate piece
         attempts = 0
         while board.currentDirection != rotation and attempts < 4:
@@ -110,13 +119,13 @@ class EvaluationAgent(nn.Module):
             reward = self.forward(feats).item()
         return reward, feats, rotation, target_x
 
-    def best_move(self):
+    def best_move(self, board: BoardData) -> tuple[int, int, torch.Tensor] | None:
         """Evaluate all moves and return the best one based on predicted reward."""
         best = None
         best_reward = -float('inf')
         for rot in range(4):
             for x in range(BoardData.width):
-                res = self._simulate_move(rot, x)
+                res = self._simulate_move(rot, x, board)
                 if res is None:
                     continue
                 reward, feats, r_used, x_used = res
@@ -125,20 +134,25 @@ class EvaluationAgent(nn.Module):
                     best = (r_used, x_used, feats)
         return best
     
-    def act(self):
+    def act(self, board: BoardData) -> list[int] | None:
         """Return the best move based on current board state."""
-        move = self.best_move()
+        move = self.best_move(board)
         if move is None:
             return None
         rot, x_target, features = move
         k = 0
         list_of_moves = []
-        while BOARD_DATA.currentDirection != rot and k < 4:
-            list_of_moves.append(2)
+        # make sure not to use the real board, but a copy
+        board = copy.deepcopy(board)
+        while board.currentDirection != rot and k < 4:
+            board.rotateRight()
             k += 1
-        while BOARD_DATA.currentX < x_target:
+            list_of_moves.append(2)
+        while board.currentX < x_target:
+            board.moveRight()
             list_of_moves.append(1)
-        while BOARD_DATA.currentX > x_target:
+        while board.currentX > x_target:
+            board.moveLeft()
             list_of_moves.append(0)
         list_of_moves.append(3)
         self.update(features, 0)
@@ -162,10 +176,7 @@ class EvaluationAgent(nn.Module):
     
     def load(self, filepath: str):
         """Load the model state from the specified file."""
-        print(f"Loading model from {filepath}")
         self.load_state_dict(torch.load(filepath, map_location=torch.device('cpu')))
-    
-    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True, assign: bool = False):
-        return super().load_state_dict(state_dict, strict, assign)
+        self.eval()
 
     
