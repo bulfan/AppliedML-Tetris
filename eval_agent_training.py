@@ -102,9 +102,9 @@ def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: floa
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genetic training for EvaluationAgent")
-    parser.add_argument("--episodes", type=int, default=20)
+    parser.add_argument("--episodes", type=int, default=1000)
     parser.add_argument("--steps", type=int, default=1000)
-    parser.add_argument("--pop-size", type=int, default=50)
+    parser.add_argument("--pop-size", type=int, default=100)
     parser.add_argument("--elite-size", type=int, default=10)
     parser.add_argument("--sigma", type=float, default=0.02)
     parser.add_argument("--model-out", type=str, default="AppliedML-Tetris/models/evaluation_agent.pth")
