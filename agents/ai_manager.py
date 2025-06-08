@@ -134,7 +134,6 @@ class AIManager:
             if len(self.evalMoves) == 0:
                 features = self.preprocessor.extract_features(board_state)
                 self.evalMoves.extend(self.current_agent.act(board))
-            print(self.evalMoves)
             return self.evalMoves.pop(0) if self.evalMoves else None
 
     def get_agent_info(self):

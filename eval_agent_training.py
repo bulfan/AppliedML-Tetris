@@ -7,20 +7,24 @@ from multiprocessing import Pool, cpu_count
 from env.game_data import BOARD_DATA, BoardData, Shape
 from agents.evaluation_agent import EvaluationAgent
 
-# Determine computing device
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Running on device: {DEVICE}")
-
 def compute_reward(lines: int, done: bool) -> float:
     """Replicate reward logic from TetrisEnv.step."""
     reward = lines
     if done:
         reward -= 10
-    if lines > 0:
-        reward += 1 * lines
+    
+    #higher reward for multiple lines cleared
+    line_reward = [
+        0, 1, 3, 5, 10
+    ]
+    if lines < len(line_reward):
+        reward += line_reward[lines]
+    
     board = np.array(BOARD_DATA.getData(), dtype=np.float32).reshape(
         BoardData.height, BoardData.width
     )
+
+    #punishment for holes in the board (empty space with a block above)
     holes = 0
     for x in range(BoardData.width):
         found_filled = False
@@ -32,6 +36,8 @@ def compute_reward(lines: int, done: bool) -> float:
                 found_filled = False
     if holes > 0:
         reward -= 0.001 * holes
+    
+    #punishment for height of the board
     highest_block = 0
     for x in range(BoardData.width):
         for y in range(BoardData.height):
@@ -39,8 +45,7 @@ def compute_reward(lines: int, done: bool) -> float:
                 highest_block = max(highest_block, BoardData.height - y)
                 break
     reward -= 0.005 * highest_block
-    if not done:
-        reward += 0.0001
+
     return float(reward)
 
 
@@ -108,6 +113,9 @@ def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: floa
                 parent = random.choice(elites)
                 child = EvaluationAgent()
                 child.load_state_dict(mutate_state(parent.state_dict(), sigma))
+                #decrease randomness in mutation overtime
+                if sigma != 0:
+                    sigma -= 0.001
                 new_population.append(child)
 
             population = new_population
@@ -120,10 +128,10 @@ def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: floa
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genetic training for EvaluationAgent")
-    parser.add_argument("--episodes", type=int, default=1000)
-    parser.add_argument("--steps", type=int, default=1000)
-    parser.add_argument("--pop-size", type=int, default=100)
-    parser.add_argument("--elite-size", type=int, default=10)
+    parser.add_argument("--episodes", type=int, default=10)
+    parser.add_argument("--steps", type=int, default=100)
+    parser.add_argument("--pop-size", type=int, default=50)
+    parser.add_argument("--elite-size", type=int, default=5)
     parser.add_argument("--sigma", type=float, default=0.02)
     parser.add_argument("--model-out", type=str, default="AppliedML-Tetris/models/evaluation_agent.pth")
     parser.add_argument("--workers", type=int, default=None, help="Number of parallel workers (defaults to CPU count)")

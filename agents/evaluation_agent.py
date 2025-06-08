@@ -18,7 +18,7 @@ class EvaluationAgent(nn.Module):
     It outputs a single value representing the predicted reward for a move.
     """
 
-    def __init__(self, hidden_size: int = 16, lr: float = 1e-3):
+    def __init__(self, hidden_size: int = 4, lr: float = 1e-3):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(5, hidden_size),
@@ -57,7 +57,7 @@ class EvaluationAgent(nn.Module):
                 if val > 0:
                     block_found = True
                 elif block_found and val == 0:
-                    holes += 1
+                    holes += 0.1
         max_h = max(heights) if heights else 0
         min_h = min(heights) if heights else 0
 
