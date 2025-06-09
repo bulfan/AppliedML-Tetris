@@ -18,7 +18,7 @@ class EvaluationAgent(nn.Module):
     It outputs a single value representing the predicted reward for a move.
     """
 
-    def __init__(self, hidden_size: int = 4, lr: float = 1e-3):
+    def __init__(self, hidden_size: int = 20, lr: float = 5e-5,):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(5, hidden_size),
@@ -26,10 +26,11 @@ class EvaluationAgent(nn.Module):
             nn.Linear(hidden_size, 1)
         )
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
-        self.loss_fn = nn.MSELoss()
+        self.loss_fn = nn.SmoothL1Loss()
         self._plan: list[int] = []  # Stores the current plan of actions
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.to(next(self.parameters()).device)
         return self.net(x)
 
     # ------------------------------------------------------------------
@@ -49,15 +50,18 @@ class EvaluationAgent(nn.Module):
         diff_height = sum(abs(heights[i] - heights[i - 1])
                           for i in range(1, BoardData.width))
 
+        # punishement for holes in the board (empty space or spaces with a block above)
         holes = 0
         for x in range(BoardData.width):
-            block_found = False
+            found_filled = False
             for y in range(BoardData.height):
-                val = board.backBoard[x + y * BoardData.width]
-                if val > 0:
-                    block_found = True
-                elif block_found and val == 0:
-                    holes += 0.1
+                if board.backBoard[x + y * BoardData.width] > 0:
+                    found_filled = True
+                elif found_filled and board.backBoard[x + y * BoardData.width] == 0:
+                    holes += 1
+                    found_filled = False
+        
+        # max and min height of columns
         max_h = max(heights) if heights else 0
         min_h = min(heights) if heights else 0
 
@@ -70,13 +74,20 @@ class EvaluationAgent(nn.Module):
         else:
         # no different reward for more than 4 lines cleared
             lines_cleared = 10
+        
+        # Normalize and invert features where necessary
+        norm_diff_height = -diff_height / (BoardData.height * BoardData.width)
+        norm_holes = -holes / (BoardData.height * BoardData.width)
+        norm_max_h = -max_h / BoardData.height
+        norm_min_h = -min_h / BoardData.height
+        norm_lines = lines_cleared
 
         feats = torch.tensor([
-            float(diff_height),
-            float(holes),
-            float(max_h),
-            float(min_h),
-            float(lines_cleared)
+            norm_diff_height,
+            norm_holes,
+            norm_max_h,
+            norm_min_h,
+            norm_lines
         ], dtype=torch.float32)
         return feats
 
@@ -161,14 +172,13 @@ class EvaluationAgent(nn.Module):
     # ------------------------------------------------------------------
     # Learning
     # ------------------------------------------------------------------
-    def update(self, features: torch.Tensor, actual_reward: float) -> float:
-        """Update the network given observed ``actual_reward`` for ``features``."""
-        pred = self.forward(features)
-        loss = self.loss_fn(pred, torch.tensor([actual_reward], dtype=torch.float32))
+    def update(self, features, actual_reward):
         self.optimizer.zero_grad()
+        pred = self.forward(features)
+        target = torch.tensor([actual_reward], dtype=torch.float32, device=pred.device)
+        loss = self.loss_fn(pred, target)
         loss.backward()
         self.optimizer.step()
-        return loss.item()
     
     def save(self, filepath: str):
         """Save the model state to the specified file."""
