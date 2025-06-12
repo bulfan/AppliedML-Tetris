@@ -182,24 +182,15 @@ class EvaluationAgent(nn.Module):
         loss.backward()
         self.optimizer.step()
     
-    def save(self, filepath: str, compress: bool = True, compresslevel: int = 9):
-        """Save the model state to the specified file, optionally compressed."""
-        if compress:
-            # Write compressed via gzip
-            with gzip.open(filepath, 'wb', compresslevel=compresslevel) as f:
-                torch.save(self.state_dict(), f)
-        else:
-            torch.save(self.state_dict(), filepath)
-
-    def load(self, filepath: str, compress: bool = True):
-        """Load the model state from the specified file, optionally compressed."""
-        if compress:
-            with gzip.open(filepath, 'rb') as f:
-                state_dict = torch.load(f, map_location=torch.device('cpu'))
-        else:
-            state_dict = torch.load(filepath, map_location=torch.device('cpu'))
-        self.load_state_dict(state_dict)
+    def save(self, filepath: str):
+        """Save the model state to the specified file."""
+        torch.save(self.state_dict(), filepath)
+    
+    def load(self, filepath: str):
+        """Load the model state from the specified file."""
+        self.load_state_dict(torch.load(filepath, map_location=torch.device('cpu')))
         self.eval()
+
 
 
     # ------------------------------------------------------------------

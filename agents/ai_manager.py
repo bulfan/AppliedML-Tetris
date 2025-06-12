@@ -89,7 +89,7 @@ class AIManager:
                 print(f" Loaded best advanced DQN model from {best_advanced_path}")
             except Exception as e:
                 print(f"  Failed to load best advanced DQN model: {e}")
-        evaluation_model_path = os.path.join(model_dir, "evaluation_agent.pt.gz")
+        evaluation_model_path = os.path.join(model_dir, "evaluation_agent.pth")
         if os.path.exists(evaluation_model_path):
             try:
                 self.agents["evaluation"].load_script(evaluation_model_path)

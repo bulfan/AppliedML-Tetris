@@ -113,10 +113,6 @@ class DQNAgent:
             print(f"Model loaded from {filepath}")
         else:
             print(f"No model found at {filepath}")
-
-    # ------------------------------------------------------------------
-    # TorchScript export for standalone loading
-    # ------------------------------------------------------------------
             
     def export_script(self) -> torch.jit.ScriptModule:
         """Return a TorchScript version of the model for standalone use."""
@@ -156,6 +152,7 @@ class DQNAgent:
         else:
             scripted = torch.jit.load(filepath, map_location=map_location)
         return scripted
+
 
 
 class RandomAgent:
