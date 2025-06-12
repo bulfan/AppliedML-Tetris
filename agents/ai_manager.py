@@ -92,7 +92,7 @@ class AIManager:
         evaluation_model_path = os.path.join(model_dir, "evaluation_agent.pth")
         if os.path.exists(evaluation_model_path):
             try:
-                self.agents["evaluation"].load_script(evaluation_model_path)
+                self.agents["evaluation"].load(evaluation_model_path)
                 print(f" Loaded evaluation agent model from {evaluation_model_path}")
             except Exception as e:
                 print(f"  Failed to load evaluation agent model: {e}")
