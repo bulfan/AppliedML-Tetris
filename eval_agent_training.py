@@ -146,9 +146,13 @@ def train(pop_size: int, steps: int, episodes: int, elite_size: int, sigma: floa
 
     # Save best model from final generation
     best_agent = scores[0][1]
-    torch.save(best_agent.state_dict(), model_out)
+    best_agent.save(model_out, compress=True, compresslevel=9)
+
+    #compress and save model script
+    best_agent.save_scripted(model_out.replace(".pkl.gz", ".pt.gz"), compress=True, compresslevel=9)
+
     print(f"Saved best agent's state to {model_out}")
-    log_path = model_out.replace(".pth", "_log.json")
+    log_path = model_out.replace(".pkl.gz", "_log.json")
     with open(log_path, "w") as f:
         json.dump({
             "best_rewards": best_rewards,
@@ -170,12 +174,12 @@ def plot_train(avg_rewards: list, best_rewards: list, model_out: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genetic training for EvaluationAgent")
-    parser.add_argument("--episodes", type=int, default=100)
+    parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--steps", type=int, default=1000)
-    parser.add_argument("--pop-size", type=int, default=100)
+    parser.add_argument("--pop-size", type=int, default=1)
     parser.add_argument("--elite-size", type=int, default=10)
     parser.add_argument("--sigma", type=float, default=0.01)
-    parser.add_argument("--model-out", type=str, default="AppliedML-Tetris/models/evaluation_agent.pth")
+    parser.add_argument("--model-out", type=str, default="models/evaluation_agent.pkl.gz")
     parser.add_argument("--workers", type=int, default=None, help="Number of parallel workers (defaults to CPU count)")
     args = parser.parse_args()
     train(args.pop_size, args.steps, args.episodes, args.elite_size, args.sigma, args.model_out, args.workers)

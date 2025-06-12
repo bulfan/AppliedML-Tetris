@@ -6,6 +6,9 @@ from agents.replay_buffer import ReplayBuffer
 import torch.nn.functional as F
 import os
 import config
+from pathlib import Path
+from typing import Any
+import gzip
 
 
 class DQNAgent:
@@ -110,6 +113,49 @@ class DQNAgent:
             print(f"Model loaded from {filepath}")
         else:
             print(f"No model found at {filepath}")
+
+    # ------------------------------------------------------------------
+    # TorchScript export for standalone loading
+    # ------------------------------------------------------------------
+            
+    def export_script(self) -> torch.jit.ScriptModule:
+        """Return a TorchScript version of the model for standalone use."""
+        # Script only the network module
+        scripted = torch.jit.script(self.net)
+        return scripted
+
+    def save_scripted(self, filepath: str, compress: bool = True, compresslevel: int = 9):
+        """Convenience: export to TorchScript and save in one step."""
+        scripted = self.export_script()
+        DQNAgent.save_script(scripted, filepath, compress=compress, compresslevel=compresslevel)
+
+    @staticmethod
+    def save_script(scripted_module: torch.jit.ScriptModule, filepath: str, compress: bool = True, compresslevel: int = 9):
+        """Save a TorchScript module to disk, optionally gzipped."""
+        parent = Path(filepath).parent
+        if parent and not parent.exists():
+            parent.mkdir(parents=True, exist_ok=True)
+        if compress:
+            # Save to a temporary file then gzip-compress
+            tmp_path = filepath + ".tmp"
+            scripted_module.save(tmp_path)
+            with gzip.open(filepath, 'wb', compresslevel=compresslevel) as f_out:
+                with open(tmp_path, 'rb') as f_in:
+                    f_out.write(f_in.read())
+            # remove temporary file
+            Path(tmp_path).unlink()
+        else:
+            scripted_module.save(filepath)
+
+    @staticmethod
+    def load_script(filepath: str, map_location: Any = 'cpu', compress: bool = True) -> torch.jit.ScriptModule:
+        """Load a TorchScript module (gzipped or raw) for inference without class code."""
+        if compress:
+            with gzip.open(filepath, 'rb') as f:
+                scripted = torch.jit.load(f, map_location=map_location)
+        else:
+            scripted = torch.jit.load(filepath, map_location=map_location)
+        return scripted
 
 
 class RandomAgent:

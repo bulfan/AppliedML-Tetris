@@ -5,6 +5,8 @@ import copy
 from env.game_data import BOARD_DATA, BoardData
 import numpy as np
 from typing import Any
+import gzip
+from pathlib import Path
 
 class EvaluationAgent(nn.Module):
     """Simple evaluation agent using board heuristics.
@@ -180,13 +182,66 @@ class EvaluationAgent(nn.Module):
         loss.backward()
         self.optimizer.step()
     
-    def save(self, filepath: str):
-        """Save the model state to the specified file."""
-        torch.save(self.state_dict(), filepath)
-    
-    def load(self, filepath: str):
-        """Load the model state from the specified file."""
-        self.load_state_dict(torch.load(filepath, map_location=torch.device('cpu')))
+    def save(self, filepath: str, compress: bool = True, compresslevel: int = 9):
+        """Save the model state to the specified file, optionally compressed."""
+        if compress:
+            # Write compressed via gzip
+            with gzip.open(filepath, 'wb', compresslevel=compresslevel) as f:
+                torch.save(self.state_dict(), f)
+        else:
+            torch.save(self.state_dict(), filepath)
+
+    def load(self, filepath: str, compress: bool = True):
+        """Load the model state from the specified file, optionally compressed."""
+        if compress:
+            with gzip.open(filepath, 'rb') as f:
+                state_dict = torch.load(f, map_location=torch.device('cpu'))
+        else:
+            state_dict = torch.load(filepath, map_location=torch.device('cpu'))
+        self.load_state_dict(state_dict)
         self.eval()
+
+
+    # ------------------------------------------------------------------
+    # TorchScript export for standalone loading
+    # ------------------------------------------------------------------
+    def export_script(self) -> torch.jit.ScriptModule:
+        """Return a TorchScript version of the model for standalone use."""
+        # Script only the network module
+        scripted = torch.jit.script(self.net)
+        return scripted
+
+    def save_scripted(self, filepath: str, compress: bool = True, compresslevel: int = 9):
+        """Convenience: export to TorchScript and save in one step."""
+        scripted = self.export_script()
+        EvaluationAgent.save_script(scripted, filepath, compress=compress, compresslevel=compresslevel)
+
+    @staticmethod
+    def save_script(scripted_module: torch.jit.ScriptModule, filepath: str, compress: bool = True, compresslevel: int = 9):
+        """Save a TorchScript module to disk, optionally gzipped."""
+        parent = Path(filepath).parent
+        if parent and not parent.exists():
+            parent.mkdir(parents=True, exist_ok=True)
+        if compress:
+            # Save to a temporary file then gzip-compress
+            tmp_path = filepath + ".tmp"
+            scripted_module.save(tmp_path)
+            with gzip.open(filepath, 'wb', compresslevel=compresslevel) as f_out:
+                with open(tmp_path, 'rb') as f_in:
+                    f_out.write(f_in.read())
+            # remove temporary file
+            Path(tmp_path).unlink()
+        else:
+            scripted_module.save(filepath)
+
+    @staticmethod
+    def load_script(filepath: str, map_location: Any = 'cpu', compress: bool = True) -> torch.jit.ScriptModule:
+        """Load a TorchScript module (gzipped or raw) for inference without class code."""
+        if compress:
+            with gzip.open(filepath, 'rb') as f:
+                scripted = torch.jit.load(f, map_location=map_location)
+        else:
+            scripted = torch.jit.load(filepath, map_location=map_location)
+        return scripted
 
     
